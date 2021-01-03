@@ -280,17 +280,91 @@ class HumanPlayer(Player):
 # DO NOT MODIFY CODE ABOVE THIS LINE
 # ----------------------------------
 
+class SearchType:
+    BLIND = 1
+
+SEARCH = SearchType.BLIND
+
+# Multi-child tree node
+class Node(object):
+    def __init__(self, data, parent = None):
+        self.data = data
+        self.parent = parent
+        self.children = []
+
+    def add_child(self, obj):
+        self.children.append(obj, self)
+
 class SearchBasedPlayer(Player):
     def __init__(self):
         super(SearchBasedPlayer, self).__init__()
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
+        # self.generate_states...
+        # ...
+        # (element,) = obstacles
+        # print(obstacles[0].pop().position)
+
+        # for obstacle in obstacles[0]: 
+        #     print(obstacle.position)
+        if SEARCH == SearchType.BLIND:
+            self._blind_search_path(snake, food, *obstacles)
+        # pass
+
+    def _blind_search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
+        def first_child(node: Node) -> Node:
+            if node.parent is None:
+                sys.exit('the tree does not have any children')
+
+            while node.parent.parent is not None:
+                node = node.parent
+
+            return node
+
+        def is_position_forbidden(pos: Position) -> bool:
+            snakePositions = [[o.x, o.y] for o in snake.positions]
+
+            # check if position is in grid boundaries
+            if pos.x < 0 or pos.y < 0 or GRID_WIDTH <= pos.x or GRID_HEIGHT <= pos.y:
+                return True
+
+            # check if position is an obstacle
+            for obstacle in obstacles[0]: 
+                if obstacle.position.x == pos.x and obstacle.position.y == pos.y:
+                    return True
+
+            # check if snake tail contains in the position
+            if len(snakePositions) > 1:
+                return ([pos.x, pos.y] in snakePositions)
+
+            return False
+
+        def position_after_movement(dir: Direction) -> Position:
+            snakeHead = snake.get_head_position()
+            # print(dir[0], dir[1])
+            return Position(snakeHead.x + dir[0], snakeHead.y + dir[1])
+
+        attr = [[o.x, o.y] for o in snake.positions]
+        is_position_forbidden(Position(attr[0][0], attr[0][1]))
+
+        # print(is_position_forbidden(position_after_movement(Direction.DOWN)))
+        # self.chosen_path.append(Direction.DOWN)
+
+        if not is_position_forbidden(position_after_movement(Direction.DOWN)):
+            self.chosen_path.append(Direction.DOWN)
+        elif not is_position_forbidden(position_after_movement(Direction.UP)):
+            self.chosen_path.append(Direction.UP)
+        elif not is_position_forbidden(position_after_movement(Direction.RIGHT)):
+            self.chosen_path.append(Direction.RIGHT)
+        elif not is_position_forbidden(position_after_movement(Direction.LEFT)):
+            self.chosen_path.append(Direction.LEFT)
+
         pass
 
 
 if __name__ == "__main__":
     snake = Snake(WIDTH, WIDTH, INIT_LENGTH)
-    player = HumanPlayer()
-    # player = SearchBasedPlayer()
+    # player = HumanPlayer()
+    player = SearchBasedPlayer()
     game = SnakeGame(snake, player)
     game.run()
