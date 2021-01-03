@@ -358,6 +358,8 @@ class SearchBasedPlayer(Player):
             self.chosen_path.append(Direction.RIGHT)
         elif not is_position_forbidden(position_after_movement(Direction.LEFT)):
             self.chosen_path.append(Direction.LEFT)
+        else:
+            snake.reset()
 
         pass
 
