@@ -292,8 +292,15 @@ class Node(object):
         self.parent = parent
         self.children = []
 
-    def add_child(self, obj):
-        self.children.append(obj, self)
+    def add_child(self, data):
+        self.children.append(Node(data, self))
+
+    def find(self, pos):
+        if self.data.get('position').x == pos.x and self.data.get('position').y == pos.y: return self
+        for node in self.children:
+            n = node.find(pos)
+            if n: return n
+        return None
 
 class SearchBasedPlayer(Player):
     def __init__(self):
@@ -339,10 +346,9 @@ class SearchBasedPlayer(Player):
 
             return False
 
-        def position_after_movement(dir: Direction) -> Position:
-            snakeHead = snake.get_head_position()
+        def position_after_movement(pos: Position, dir: Direction) -> Position:
             # print(dir[0], dir[1])
-            return Position(snakeHead.x + dir[0], snakeHead.y + dir[1])
+            return Position(pos.x + dir[0], pos.y + dir[1])
 
         attr = [[o.x, o.y] for o in snake.positions]
         is_position_forbidden(Position(attr[0][0], attr[0][1]))
@@ -350,18 +356,79 @@ class SearchBasedPlayer(Player):
         # print(is_position_forbidden(position_after_movement(Direction.DOWN)))
         # self.chosen_path.append(Direction.DOWN)
 
-        if not is_position_forbidden(position_after_movement(Direction.DOWN)):
-            self.chosen_path.append(Direction.DOWN)
-        elif not is_position_forbidden(position_after_movement(Direction.UP)):
-            self.chosen_path.append(Direction.UP)
-        elif not is_position_forbidden(position_after_movement(Direction.RIGHT)):
-            self.chosen_path.append(Direction.RIGHT)
-        elif not is_position_forbidden(position_after_movement(Direction.LEFT)):
-            self.chosen_path.append(Direction.LEFT)
-        else:
-            snake.reset()
+        queue = [snake.get_head_position()]
+        # self.visited.add(snake.get_head_position())
 
-        pass
+        # self.tree = None
+
+        # if self.tree is None:
+        #     self.tree = Node({ 'position': snake.get_head_position() })
+    
+        self.tree = Node({ 'position': snake.get_head_position() })
+
+        node: Node = None
+
+        # visitedInLoop: Set[Position] = set()
+        self.visited = set()
+        # visitedInLoop.add(snake.get_head_position())
+        while True:
+            currentPosition = queue.pop(0)
+            # if currentPosition != snake.get_head_position():
+            #     sys.exit('processing position should be the same with the snake head position')
+
+            node = self.tree.find(currentPosition)
+
+
+            if node is not None:
+
+                if int(node.data.get('position').x) == food.position.x and int(node.data.get('position').y) == food.position.y:
+                    print(first_child(node).data.get('direction'))
+                    self.chosen_path.append(first_child(node).data.get('direction'))
+                    print('curr position:', [snake.get_head_position().x, snake.get_head_position().y])
+                    print('children max4:', [[c.data.get('position').x, c.data.get('position').y] for c in first_child(node).children])
+                    break
+
+
+            if node is None:
+                sys.exit('node should be contained in the tree')
+
+            queueLengthBefore = len(queue)
+
+            if not is_position_forbidden(position_after_movement(currentPosition, Direction.DOWN)) and not position_after_movement(currentPosition, Direction.DOWN) in queue and self.tree.find(position_after_movement(currentPosition, Direction.DOWN)) is None: # and not in visited
+                queue.append(position_after_movement(currentPosition, Direction.DOWN))
+                node.add_child({ 'position': position_after_movement(currentPosition, Direction.DOWN), 'direction': Direction.DOWN })
+                self.visited.add(position_after_movement(currentPosition, Direction.DOWN))
+                # visitedInLoop.add(position_after_movement(currentPosition, Direction.DOWN))
+            if not is_position_forbidden(position_after_movement(currentPosition, Direction.RIGHT)) and not position_after_movement(currentPosition, Direction.RIGHT) in queue and self.tree.find(position_after_movement(currentPosition, Direction.RIGHT)) is None:
+                queue.append(position_after_movement(currentPosition, Direction.RIGHT))
+                node.add_child({ 'position': position_after_movement(currentPosition, Direction.RIGHT), 'direction': Direction.RIGHT })
+                self.visited.add(position_after_movement(currentPosition, Direction.RIGHT))
+                # visitedInLoop.add(position_after_movement(currentPosition, Direction.RIGHT))
+            if not is_position_forbidden(position_after_movement(currentPosition, Direction.UP)) and not position_after_movement(currentPosition, Direction.UP) in queue and self.tree.find(position_after_movement(currentPosition, Direction.UP)) is None:
+                queue.append(position_after_movement(currentPosition, Direction.UP))
+                node.add_child({ 'position': position_after_movement(currentPosition, Direction.UP), 'direction': Direction.UP })
+                self.visited.add(position_after_movement(currentPosition, Direction.UP))
+                # visitedInLoop.add(position_after_movement(currentPosition, Direction.UP))
+            if not is_position_forbidden(position_after_movement(currentPosition, Direction.LEFT)) and not position_after_movement(currentPosition, Direction.LEFT) in queue and self.tree.find(position_after_movement(currentPosition, Direction.LEFT)) is None:
+                queue.append(position_after_movement(currentPosition, Direction.LEFT))
+                node.add_child({ 'position': position_after_movement(currentPosition, Direction.LEFT), 'direction': Direction.LEFT })
+                self.visited.add(position_after_movement(currentPosition, Direction.LEFT))
+                # visitedInLoop.add(position_after_movement(currentPosition, Direction.LEFT))
+            
+            queueLengthAfter = len(queue)
+
+            if len(queue) == 0:
+                snake.reset()
+                queue.append(snake.get_head_position())
+                self.tree = Node({ 'position': snake.get_head_position() })
+
+        print('len', len(queue))
+        print(node.children)
+        print()
+
+        # print('food', food.position)
+        # print('head', node.data.get('position'))
+
 
 
 if __name__ == "__main__":
