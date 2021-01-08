@@ -281,9 +281,10 @@ class HumanPlayer(Player):
 # ----------------------------------
 
 class SearchType:
-    BLIND = 1
+    BLIND_BFS = 1
+    BLIND_DFS = 2
 
-SEARCH = SearchType.BLIND
+SEARCH = SearchType.BLIND_DFS
 
 # Multi-child tree node
 class Node(object):
@@ -307,7 +308,7 @@ class SearchBasedPlayer(Player):
         super(SearchBasedPlayer, self).__init__()
 
     def search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
-        if SEARCH == SearchType.BLIND:
+        if SEARCH == SearchType.BLIND_BFS or SEARCH == SearchType.BLIND_DFS:
             self._blind_search_path(snake, food, *obstacles)
 
     def _blind_search_path(self, snake: Snake, food: Food, *obstacles: Set[Obstacle]):
@@ -319,6 +320,19 @@ class SearchBasedPlayer(Player):
                 node = node.parent
 
             return node
+
+        def all_path_nodes(node: Node) -> List[Node]:
+            nodes: List[Node] = []
+
+            if node.parent is None:
+                sys.exit('the tree does not have any children')
+
+            while node.parent.parent is not None:
+                nodes.append(node)
+                node = node.parent
+
+            return nodes[::-1]
+
 
         def is_position_forbidden(pos: Position) -> bool:
             snakePositions = [[o.x, o.y] for o in snake.positions]
@@ -352,15 +366,26 @@ class SearchBasedPlayer(Player):
 
         self.visited = set()
         while True:
-            currentPosition = queue.pop(0)
+            currentPosition = None
+
+            if SEARCH == SearchType.BLIND_BFS:
+                currentPosition = queue.pop(0)
+            elif SEARCH == SearchType.BLIND_DFS:
+                currentPosition = queue.pop()
+
             node = self.tree.find(currentPosition)
 
             if node is not None:
                 if int(node.data.get('position').x) == food.position.x and int(node.data.get('position').y) == food.position.y:
-                    self.chosen_path.append(first_child(node).data.get('direction'))
-                    print(first_child(node).data.get('direction'))
-                    print('curr position:', [snake.get_head_position().x, snake.get_head_position().y])
-                    print('children max4:', [[c.data.get('position').x, c.data.get('position').y] for c in first_child(node).children])
+                    if SEARCH == SearchType.BLIND_BFS:
+                        self.chosen_path.append(first_child(node).data.get('direction'))
+                    elif SEARCH == SearchType.BLIND_DFS:
+                        self.chosen_path.append(first_child(node).data.get('direction'))
+                        nodes: List[Node] = all_path_nodes(node)
+                        for n in nodes:
+                            self.visited.add(n.data.get('position'))
+                            self.chosen_path.append(n.data.get('direction'))
+
                     break
 
 
@@ -370,22 +395,27 @@ class SearchBasedPlayer(Player):
             if not is_position_forbidden(position_after_movement(currentPosition, Direction.DOWN)) and not position_after_movement(currentPosition, Direction.DOWN) in queue and self.tree.find(position_after_movement(currentPosition, Direction.DOWN)) is None: # and not in visited
                 queue.append(position_after_movement(currentPosition, Direction.DOWN))
                 node.add_child({ 'position': position_after_movement(currentPosition, Direction.DOWN), 'direction': Direction.DOWN })
-                self.visited.add(position_after_movement(currentPosition, Direction.DOWN))
+                if SEARCH == SearchType.BLIND_BFS:
+                    self.visited.add(position_after_movement(currentPosition, Direction.DOWN))
             if not is_position_forbidden(position_after_movement(currentPosition, Direction.RIGHT)) and not position_after_movement(currentPosition, Direction.RIGHT) in queue and self.tree.find(position_after_movement(currentPosition, Direction.RIGHT)) is None:
                 queue.append(position_after_movement(currentPosition, Direction.RIGHT))
                 node.add_child({ 'position': position_after_movement(currentPosition, Direction.RIGHT), 'direction': Direction.RIGHT })
-                self.visited.add(position_after_movement(currentPosition, Direction.RIGHT))
+                if SEARCH == SearchType.BLIND_BFS:
+                    self.visited.add(position_after_movement(currentPosition, Direction.RIGHT))
             if not is_position_forbidden(position_after_movement(currentPosition, Direction.UP)) and not position_after_movement(currentPosition, Direction.UP) in queue and self.tree.find(position_after_movement(currentPosition, Direction.UP)) is None:
                 queue.append(position_after_movement(currentPosition, Direction.UP))
                 node.add_child({ 'position': position_after_movement(currentPosition, Direction.UP), 'direction': Direction.UP })
-                self.visited.add(position_after_movement(currentPosition, Direction.UP))
+                if SEARCH == SearchType.BLIND_BFS:
+                    self.visited.add(position_after_movement(currentPosition, Direction.UP))
             if not is_position_forbidden(position_after_movement(currentPosition, Direction.LEFT)) and not position_after_movement(currentPosition, Direction.LEFT) in queue and self.tree.find(position_after_movement(currentPosition, Direction.LEFT)) is None:
                 queue.append(position_after_movement(currentPosition, Direction.LEFT))
                 node.add_child({ 'position': position_after_movement(currentPosition, Direction.LEFT), 'direction': Direction.LEFT })
-                self.visited.add(position_after_movement(currentPosition, Direction.LEFT))
+                if SEARCH == SearchType.BLIND_BFS:
+                    self.visited.add(position_after_movement(currentPosition, Direction.LEFT))
             
             if len(queue) == 0:
                 snake.reset()
+                self.chosen_path = []
                 queue.append(snake.get_head_position())
                 self.tree = Node({ 'position': snake.get_head_position() })
 
